@@ -25,11 +25,11 @@
     const { useState, useMemo } = React;
 
     const initialItems = [
-      { id: 1, title: "Begrüßung & Zielbild", duration: 15, type: "Intro",        subItems: [], notes: "" },
-      { id: 2, title: "Ist-Analyse",           duration: 45, type: "Analyse",      subItems: [], notes: "" },
-      { id: 3, title: "Anforderungen",          duration: 60, type: "Arbeit",       subItems: [], notes: "" },
-      { id: 4, title: "Zielbild / Lösung",      duration: 60, type: "Entscheidung", subItems: [], notes: "" },
-      { id: 5, title: "Wrap-up & Next Steps",   duration: 20, type: "Abschluss",    subItems: [], notes: "" },
+      { id: 1, title: "Begrüßung & Zielbild", duration: 15, type: "Intro",        subItems: [], notes: "", referent: "" },
+      { id: 2, title: "Ist-Analyse",           duration: 45, type: "Analyse",      subItems: [], notes: "", referent: "" },
+      { id: 3, title: "Anforderungen",          duration: 60, type: "Arbeit",       subItems: [], notes: "", referent: "" },
+      { id: 4, title: "Zielbild / Lösung",      duration: 60, type: "Entscheidung", subItems: [], notes: "", referent: "" },
+      { id: 5, title: "Wrap-up & Next Steps",   duration: 20, type: "Abschluss",    subItems: [], notes: "", referent: "" },
     ];
 
     const TYPE_STYLES = {
@@ -120,12 +120,12 @@
 
       const addItem = () => {
         if (!newTitle.trim()) return;
-        setItems(p => [...p, { id: Date.now(), title: newTitle.trim(), duration: 15, type: newType, subItems: [], notes: "" }]);
+        setItems(p => [...p, { id: Date.now(), title: newTitle.trim(), duration: 15, type: newType, subItems: [], notes: "", referent: "" }]);
         setNewTitle("");
       };
 
       const addBreak = () =>
-        setItems(p => [...p, { id: Date.now(), title: "Pause", duration: 15, type: "Pause", subItems: [], notes: "" }]);
+        setItems(p => [...p, { id: Date.now(), title: "Pause", duration: 15, type: "Pause", subItems: [], notes: "", referent: "" }]);
 
       const toggleNotes = id => setOpenNotes(prev => ({ ...prev, [id]: !prev[id] }));
 
@@ -137,7 +137,7 @@
         c[idx] = {
           ...c[idx],
           subItems: [...(c[idx].subItems || []),
-            { id: Date.now(), title: "Neuer Unterpunkt", duration: 10, notes: "" }
+            { id: Date.now(), title: "Neuer Unterpunkt", duration: 10, notes: "", referent: "" }
           ]
         };
         setItems(c);
@@ -193,34 +193,37 @@
         s2.addText(`${startTime} – ${endTime} Uhr  |  ${totalMin} Min`, { x:0.5, y:1.1, w:12, fontSize:12, color:"666666" });
 
         const rows = [[
-          { text:"Zeit",   options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
-          { text:"Inhalt", options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
-          { text:"Typ",    options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
-          { text:"Min",    options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF", align:"center" } },
+          { text:"Zeit",     options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
+          { text:"Inhalt",   options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
+          { text:"Referent", options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
+          { text:"Typ",      options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
+          { text:"Min",      options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF", align:"center" } },
         ]];
 
         schedule.forEach(item => {
           const fill = TYPE_PPT_FILL[item.type] || "FFFFFF";
           rows.push([
-            { text:`${item.start}–${item.end}`, options:{ fill:{color:fill}, bold:true } },
-            { text: item.title,                 options:{ fill:{color:fill}, bold:true } },
-            { text: item.type,                  options:{ fill:{color:fill}, bold:true } },
-            { text: String(item.duration),      options:{ fill:{color:fill}, bold:true, align:"center" } },
+            { text:`${item.start}–${item.end}`,  options:{ fill:{color:fill}, bold:true } },
+            { text: item.title,                   options:{ fill:{color:fill}, bold:true } },
+            { text: item.referent || "",          options:{ fill:{color:fill} } },
+            { text: item.type,                    options:{ fill:{color:fill}, bold:true } },
+            { text: String(item.duration),        options:{ fill:{color:fill}, bold:true, align:"center" } },
           ]);
           // Unterpunkte eingerückt
           (item.subItems || []).forEach(si => {
             rows.push([
-              { text:`${si.start}–${si.end}`, options:{ fill:{color:"FAFAFA"}, color:"555555", fontSize:11 } },
-              { text:`   ↳ ${si.title}`,      options:{ fill:{color:"FAFAFA"}, color:"555555", fontSize:11 } },
-              { text:"",                      options:{ fill:{color:"FAFAFA"} } },
-              { text: String(si.duration),    options:{ fill:{color:"FAFAFA"}, color:"555555", fontSize:11, align:"center" } },
+              { text:`${si.start}–${si.end}`,  options:{ fill:{color:"FAFAFA"}, color:"555555", fontSize:11 } },
+              { text:`   ↳ ${si.title}`,        options:{ fill:{color:"FAFAFA"}, color:"555555", fontSize:11 } },
+              { text: si.referent || "",        options:{ fill:{color:"FAFAFA"}, color:"555555", fontSize:11 } },
+              { text:"",                        options:{ fill:{color:"FAFAFA"} } },
+              { text: String(si.duration),      options:{ fill:{color:"FAFAFA"}, color:"555555", fontSize:11, align:"center" } },
             ]);
           });
         });
 
         s2.addTable(rows, {
           x:0.5, y:1.5, w:12.3,
-          colW:[2.2, 6.5, 2.0, 1.1],
+          colW:[2.0, 5.2, 2.2, 1.8, 1.1],
           border:{ pt:1, color:"DDDDDD" },
           fontSize:13,
           rowH:0.4,
@@ -293,6 +296,9 @@
                       <span className="text-gray-400 font-bold text-sm w-5 text-center">{idx + 1}</span>
                       <input value={item.title} onChange={e => updateItem(idx, "title", e.target.value)}
                         className="flex-1 border rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-400" />
+                      <input value={item.referent} onChange={e => updateItem(idx, "referent", e.target.value)}
+                        placeholder="Referent"
+                        className="w-32 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-600" />
                       <select value={item.type} onChange={e => updateItem(idx, "type", e.target.value)}
                         className={`border rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none ${TYPE_STYLES[item.type] || ""}`}>
                         {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -356,6 +362,9 @@
                             <span className="text-gray-300 text-sm">↳</span>
                             <input value={si.title} onChange={e => updateSubItem(idx, sIdx, "title", e.target.value)}
                               className="flex-1 border rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white" />
+                            <input value={si.referent || ""} onChange={e => updateSubItem(idx, sIdx, "referent", e.target.value)}
+                              placeholder="Referent"
+                              className="w-24 border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white text-gray-600" />
                             <span className="text-gray-400 text-xs w-24 text-right">{si.start} – {si.end}</span>
                             <input type="number" value={si.duration}
                               onChange={e => updateSubItem(idx, sIdx, "duration", e.target.value)}
