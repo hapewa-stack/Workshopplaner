@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<!--
+  Workshop Planner – DATAGROUP
+  Standalone HTML – direkt im Browser öffnen
+-->
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workshop Planner – DATAGROUP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; }
+    input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    const initialItems = [
+      { id: 1, title: "Begrüßung & Zielbild", duration: 15, type: "Intro" },
+      { id: 2, title: "Ist-Analyse",           duration: 45, type: "Analyse" },
+      { id: 3, title: "Anforderungen",          duration: 60, type: "Arbeit" },
+      { id: 4, title: "Zielbild / Lösung",      duration: 60, type: "Entscheidung" },
+      { id: 5, title: "Wrap-up & Next Steps",   duration: 20, type: "Abschluss" },
+    ];
+
+    const TYPE_STYLES = {
+      Intro:       "bg-slate-100 text-slate-700 border-slate-300",
+      Analyse:     "bg-blue-100 text-blue-700 border-blue-300",
+      Arbeit:      "bg-amber-100 text-amber-700 border-amber-300",
+      Entscheidung:"bg-emerald-100 text-emerald-700 border-emerald-300",
+      Abschluss:   "bg-violet-100 text-violet-700 border-violet-300",
+      Pause:       "bg-rose-100 text-rose-700 border-rose-300",
+    };
+
+    const TYPE_PPT_FILL = {
+      Intro:       "EEF2F7",
+      Analyse:     "DCEBFF",
+      Arbeit:      "FFF1CC",
+      Entscheidung:"DDF7E8",
+      Abschluss:   "EEE7FF",
+      Pause:       "FFE0E8",
+    };
+
+    const TYPES = Object.keys(TYPE_STYLES);
+
+    function toMinutes(time) {
+      const [h, m] = time.split(":").map(Number);
+      return h * 60 + m;
+    }
+
+    function toTime(minutes) {
+      const norm = ((minutes % 1440) + 1440) % 1440;
+      return `${String(Math.floor(norm / 60)).padStart(2,"0")}:${String(norm % 60).padStart(2,"0")}`;
+    }
+
+    function WorkshopPlanner() {
+      const [items, setItems]               = useState(initialItems);
+      const [startTime, setStartTime]       = useState("09:00");
+      const [targetDuration, setTarget]     = useState(240);
+      const [workshopTitle, setTitle]       = useState("Workshop Agenda");
+      const [customerName, setCustomer]     = useState("DATAGROUP");
+      const [newTitle, setNewTitle]         = useState("");
+      const [newType, setNewType]           = useState("Arbeit");
+
+      const schedule = useMemo(() => {
+        let cur = toMinutes(startTime);
+        return items.map(item => {
+          const start = cur;
+          const end = cur + Number(item.duration || 0);
+          cur = end;
+          return { ...item, start: toTime(start), end: toTime(end) };
+        });
+      }, [items, startTime]);
+
+      const totalMin  = useMemo(() => items.reduce((s, i) => s + Number(i.duration || 0), 0), [items]);
+      const variance  = totalMin - Number(targetDuration || 0);
+      const endTime   = schedule.length ? schedule[schedule.length - 1].end : startTime;
+
+      const move = (idx, dir) => {
+        const t = idx + dir;
+        if (t < 0 || t >= items.length) return;
+        const c = [...items];
+        [c[idx], c[t]] = [c[t], c[idx]];
+        setItems(c);
+      };
+
+      const update = (idx, field, val) => {
+        const c = [...items];
+        c[idx] = { ...c[idx], [field]: field === "duration" ? Math.max(0, Number(val || 0)) : val };
+        setItems(c);
+      };
+
+      const addItem = () => {
+        if (!newTitle.trim()) return;
+        setItems(p => [...p, { id: Date.now(), title: newTitle.trim(), duration: 15, type: newType }]);
+        setNewTitle("");
+      };
+
+      const addBreak = () =>
+        setItems(p => [...p, { id: Date.now(), title: "Pause", duration: 15, type: "Pause" }]);
+
+      const remove = idx => setItems(p => p.filter((_, i) => i !== idx));
+
+      const exportPPT = () => {
+        const pptx = new PptxGenJS();
+        pptx.defineLayout({ name: "DG", width: 13.333, height: 7.5 });
+        pptx.layout = "DG";
+
+        // ── Titelfolie ──────────────────────────────────────────
+        const s1 = pptx.addSlide();
+        s1.background = { color: "FFFFFF" };
+        s1.addShape(pptx.ShapeType.rect, { x:0, y:0, w:13.333, h:0.45, fill:{color:"E30613"}, line:{color:"E30613"} });
+        s1.addShape(pptx.ShapeType.rect, { x:0, y:7.05, w:13.333, h:0.45, fill:{color:"E30613"}, line:{color:"E30613"} });
+        s1.addText("DATAGROUP", { x:0.4, y:0.02, w:4, fontSize:14, bold:true, color:"FFFFFF" });
+        s1.addText(workshopTitle, { x:1.5, y:2.5, w:10, fontSize:36, bold:true, color:"1A1A1A", align:"center" });
+        s1.addText(customerName,  { x:1.5, y:3.5, w:10, fontSize:22, color:"E30613", align:"center" });
+        s1.addText(new Date().toLocaleDateString("de-DE"), { x:1.5, y:4.2, w:10, fontSize:14, color:"666666", align:"center" });
+
+        // ── Agenda-Folie ────────────────────────────────────────
+        const s2 = pptx.addSlide();
+        s2.background = { color: "FFFFFF" };
+        s2.addShape(pptx.ShapeType.rect, { x:0, y:0, w:13.333, h:0.45, fill:{color:"E30613"}, line:{color:"E30613"} });
+        s2.addShape(pptx.ShapeType.rect, { x:0, y:7.05, w:13.333, h:0.45, fill:{color:"E30613"}, line:{color:"E30613"} });
+        s2.addText("DATAGROUP", { x:0.4, y:0.02, w:4, fontSize:14, bold:true, color:"FFFFFF" });
+        s2.addText("Agenda", { x:0.5, y:0.65, w:12, fontSize:24, bold:true, color:"1A1A1A" });
+        s2.addText(`${startTime} – ${endTime} Uhr  |  ${totalMin} Min`, {
+          x:0.5, y:1.1, w:12, fontSize:12, color:"666666"
+        });
+
+        const rows = [
+          [
+            { text:"Zeit",    options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
+            { text:"Inhalt",  options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
+            { text:"Typ",     options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
+            { text:"Min",     options:{ bold:true, fill:{color:"1A1A1A"}, color:"FFFFFF" } },
+          ],
+          ...schedule.map(item => [
+            { text:`${item.start}–${item.end}`, options:{ fill:{color: TYPE_PPT_FILL[item.type] || "FFFFFF"} } },
+            { text: item.title,                 options:{ fill:{color: TYPE_PPT_FILL[item.type] || "FFFFFF"} } },
+            { text: item.type,                  options:{ fill:{color: TYPE_PPT_FILL[item.type] || "FFFFFF"} } },
+            { text: String(item.duration),      options:{ fill:{color: TYPE_PPT_FILL[item.type] || "FFFFFF"}, align:"center" } },
+          ])
+        ];
+
+        s2.addTable(rows, {
+          x:0.5, y:1.5, w:12.3,
+          colW:[2.2, 6.5, 2.0, 1.1],
+          border:{ pt:1, color:"DDDDDD" },
+          fontSize:13,
+          rowH:0.42,
+        });
+
+        pptx.writeFile({ fileName: `${customerName}_${workshopTitle.replace(/\s+/g,"_")}.pptx` });
+      };
+
+      const varColor = variance === 0 ? "text-emerald-600" : variance > 0 ? "text-red-600" : "text-amber-600";
+      const varLabel = variance === 0 ? "Exakt geplant" : variance > 0 ? `+${variance} Min zu lang` : `${variance} Min Puffer`;
+
+      return (
+        <div className="min-h-screen bg-gray-100">
+          {/* Header */}
+          <div className="bg-red-600 text-white px-6 py-4 flex items-center justify-between shadow">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest opacity-80">DATAGROUP</p>
+              <h1 className="text-2xl font-bold">Workshop Planner</h1>
+            </div>
+            <button
+              onClick={exportPPT}
+              className="bg-white text-red-600 font-bold px-5 py-2 rounded-lg shadow hover:bg-red-50 transition text-sm"
+            >
+              ↓ PowerPoint exportieren
+            </button>
+          </div>
+
+          <div className="max-w-3xl mx-auto p-6 grid gap-4">
+
+            {/* Einstellungen */}
+            <div className="bg-white rounded-xl shadow p-5 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Workshop-Titel</label>
+                <input value={workshopTitle} onChange={e => setTitle(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Kunde / Organisation</label>
+                <input value={customerName} onChange={e => setCustomer(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Startzeit</label>
+                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Zieldauer (Minuten)</label>
+                <input type="number" value={targetDuration} onChange={e => setTarget(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400" />
+              </div>
+            </div>
+
+            {/* Status-Bar */}
+            <div className="bg-white rounded-xl shadow px-5 py-3 flex items-center justify-between text-sm">
+              <span className="text-gray-500">
+                Geplant: <strong>{totalMin} Min</strong> &nbsp;|&nbsp; Ende: <strong>{endTime} Uhr</strong>
+              </span>
+              <span className={`font-bold ${varColor}`}>{varLabel}</span>
+            </div>
+
+            {/* Agenda-Punkte */}
+            {schedule.map((item, idx) => (
+              <div key={item.id} className="bg-white rounded-xl shadow p-4 grid gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-gray-400 font-bold text-sm w-5 text-center">{idx + 1}</span>
+                  <input
+                    value={item.title}
+                    onChange={e => update(idx, "title", e.target.value)}
+                    className="flex-1 border rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-400"
+                  />
+                  <select
+                    value={item.type}
+                    onChange={e => update(idx, "type", e.target.value)}
+                    className={`border rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none ${TYPE_STYLES[item.type] || ""}`}
+                  >
+                    {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="flex items-center gap-3 pl-8">
+                  <span className="text-gray-500 text-sm w-32">⏱ {item.start} – {item.end}</span>
+                  <input
+                    type="number"
+                    value={item.duration}
+                    onChange={e => update(idx, "duration", e.target.value)}
+                    className="w-20 border rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-red-400"
+                  />
+                  <span className="text-gray-400 text-sm">Min</span>
+                  <div className="ml-auto flex gap-1">
+                    <button onClick={() => move(idx, -1)} disabled={idx === 0}
+                      className="w-8 h-8 rounded-lg border text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition">↑</button>
+                    <button onClick={() => move(idx, 1)} disabled={idx === schedule.length - 1}
+                      className="w-8 h-8 rounded-lg border text-gray-500 hover:bg-gray-100 disabled:opacity-30 transition">↓</button>
+                    <button onClick={() => remove(idx)}
+                      className="w-8 h-8 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition">✕</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Neuer Punkt */}
+            <div className="bg-white rounded-xl shadow p-4 flex gap-2 items-center">
+              <input
+                placeholder="Neuer Agenda-Punkt..."
+                value={newTitle}
+                onChange={e => setNewTitle(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addItem()}
+                className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+              />
+              <select value={newType} onChange={e => setNewType(e.target.value)}
+                className="border rounded-lg px-2 py-2 text-sm focus:outline-none">
+                {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <button onClick={addItem}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
+                + Hinzufügen
+              </button>
+              <button onClick={addBreak}
+                className="border border-gray-300 text-gray-600 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+                + Pause
+              </button>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<WorkshopPlanner />);
+  </script>
+</body>
+</html>
