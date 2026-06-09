@@ -216,15 +216,6 @@
               { text: String(si.duration),    options:{ fill:{color:"FAFAFA"}, color:"555555", fontSize:11, align:"center" } },
             ]);
           });
-          // Notizen als eigene Zeile (hellgelb, kursiv)
-          if (item.notes && item.notes.trim()) {
-            rows.push([
-              { text:"", options:{ fill:{color:"FFFDE7"} } },
-              { text:`📝 ${item.notes.trim()}`, options:{ fill:{color:"FFFDE7"}, color:"555500", fontSize:11, italic:true, colspan:2 } },
-              { text:"", options:{ fill:{color:"FFFDE7"} } },
-              { text:"", options:{ fill:{color:"FFFDE7"} } },
-            ]);
-          }
         });
 
         s2.addTable(rows, {
